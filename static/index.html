@@ -1,0 +1,357 @@
+<html>
+<head>
+    <title>Category Cravings</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            background: white;
+            color: dimgray;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: black;
+        }
+        .subtitle {
+            font-size: 16px;
+            color: gray;
+            margin-bottom: 20px;
+        }
+        .categories {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .category-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: black;
+        }
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 10px;
+        }
+        .category-item {
+            padding: 10px;
+            background: lightgrey;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .category-item.selected {
+            background: teal;
+            color: white;
+        }
+        .category-item:hover {
+            background: slategray;
+            color: white;
+        }
+        .main-content {
+            display: flex;
+            width: 100%;
+            gap: 20px;
+            flex: 1;
+        }
+        .data-display {
+            width: 35%;
+            background: whitesmoke;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .data-display-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: black;
+        }
+        .default-message {
+            font-size: 18px;
+            color: darkgray;
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        .restaurant-list {
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+            border: 1px solid lightgray;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        .restaurant-box {
+            background: gainsboro;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        .restaurant-box:hover {
+            background: silver;
+        }
+        .restaurant-box h4 {
+            margin: 0;
+            font-size: 16px;
+            color: black;
+        }
+        .restaurant-box p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: gray;
+        }
+        .histogram-container {
+            width: 65%;
+            background: whitesmoke;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .histogram-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: black;
+            margin-bottom: 10px;
+        }
+        .histogram-subtitle {
+            font-size: 16px;
+            color: gray;
+            margin-bottom: 20px;
+        }
+        .histogram {
+            width: 100%;
+            height: 100%;
+        }
+        .axis-label {
+            font-size: 12px;
+            fill: gray;
+        }
+        .bar {
+            stroke: black;
+            stroke-width: 1px;
+        }
+        .tooltip {
+            position: absolute;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Hometown Cravings</div>
+        <div class="subtitle">Want to find food that fits with your tastes? Just click a category and choose from the options!</div>
+        <div class="categories">
+            <div class="category-title">Food Categories:</div>
+            <div class="category-grid">
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="data-display">
+                <div class="data-display-title">Restaurants</div>
+                <div class="default-message">Choose a category for information!</div>
+                <div id="manual-filtering" class="filtering" style="display: none;">
+                    <label for="rating-filter">Rating:</label>
+                    <select id="rating-filter">
+                        <option value="0">All</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                    <label for="rating-amount-filter">Review Count:</label>
+                    <input type="number" id="rating-amount-filter" min="0" placeholder="Min review count">
+                    <div class="restaurant-list" id="filtered-results"></div>
+                </div>
+            </div>
+            <div class="histogram-container">
+                <div class="histogram-title">Restaurant Ratings by Neighborhood</div>
+                <div class="histogram-subtitle">Click on a bar to find restaurants in the listing!</div>
+                <div class="default-message">Choose a category for information!</div>
+                <div id="histogram" class="histogram" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip"></div>
+
+    <script>
+        let data;
+        let currentCategory = null;
+
+        d3.csv("yelp_pittsburgh.csv").then(csvData => {
+            data = csvData.filter(d => d.type === "food" && d.neighborhood);
+            makeCategories(data);
+        });
+
+        function makeCategories(data) {
+            const categories = [...new Set(data.map(d => d.category))];
+            const categoryGrid = d3.select(".category-grid");
+            categoryGrid.selectAll(".category-item")
+                .data(categories)
+                .enter()
+                .append("div")
+                .attr("class", "category-item")
+                .text(d => d)
+                .on("click", function(event, d) {
+                    if (currentCategory) {
+                        d3.selectAll(".category-item").classed("selected", false);
+                    }
+                    currentCategory = d;
+                    d3.select(this).classed("selected", true);
+                    showOptions();
+                });
+        }
+
+        function showOptions() {
+            d3.selectAll(".default-message").style("display", "none");
+            d3.select("#histogram").style("display", "block");
+            d3.select("#manual-filtering").style("display", "block");
+            updateHistogram(currentCategory);
+            updateManualFiltering(currentCategory);
+        }
+
+        function updateHistogram(category) {
+            const filteredData = data.filter(d => d.category === category && d.neighborhood);
+            const histogram = d3.select("#histogram");
+            histogram.selectAll("*").remove();
+
+            //https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect
+            const margin = { top: 20, right: 20, bottom: 60, left: 40 };
+            const width = histogram.node().getBoundingClientRect().width - margin.left - margin.right;
+            const height = histogram.node().getBoundingClientRect().height - margin.top - margin.bottom;
+
+            const svg = histogram.append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const neighborhoods = [...new Set(filteredData.map(d => d.neighborhood))];
+            const xScale = d3.scaleBand()
+                .domain(neighborhoods)
+                .range([0, width])
+                .padding(0.1);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(filteredData, d => +d["review count"])])
+                .range([height, 0]);
+
+            const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
+
+            const tooltip = d3.select(".tooltip");
+
+            neighborhoods.forEach(neighborhood => {
+                const neighborhoodData = filteredData.filter(d => d.neighborhood === neighborhood);
+                let yOffset = 0;
+
+                neighborhoodData.forEach(restaurant => {
+                    const reviewCount = +restaurant["review count"];
+
+                    svg.append("rect")
+                        .attr("class", "bar")
+                        .attr("x", xScale(neighborhood))
+                        .attr("y", yScale(yOffset + reviewCount))
+                        .attr("width", xScale.bandwidth())
+                        .attr("height", yScale(0) - yScale(reviewCount))
+                        .attr("fill", colorScale(restaurant.name))
+                        .on("mouseover", function(event) {
+                            tooltip.style("opacity", 1)
+                                .html(`Restaurant: ${restaurant.name}<br>Rating: ${restaurant.rating}<br>Review Count: ${reviewCount}`)
+                                .style("left", `${event.pageX + 5}px`)
+                                .style("top", `${event.pageY - 20}px`);
+                        })
+                        .on("mouseout", function() {
+                            tooltip.style("opacity", 0);
+                        })
+                        .on("click", function() {
+                            const restaurantBox = d3.select("#filtered-results")
+                                .selectAll(".restaurant-box")
+                                .filter(function() {
+                                    return d3.select(this).select("h4").text() === restaurant.name;
+                                })
+                                .node();
+                            //https://stackoverflow.com/questions/9707397/making-a-div-vertically-scrollable-using-css
+                            if (restaurantBox) {
+                                restaurantBox.scrollIntoView({ behavior: "smooth", block: "center" });
+                                d3.select(restaurantBox).style("background", "silver");
+                                setTimeout(() => {
+                                    d3.select(restaurantBox).style("background", "lightgrey");
+                                }, 1000);
+                            }
+                        });
+
+                    yOffset += reviewCount;
+                });
+            });
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(xScale))
+                .selectAll("text")
+                .attr("class", "axis-label")
+                .style("text-anchor", "end")
+                .attr("dx", "6px")
+                .attr("dy", "8px")
+                .attr("transform", "rotate(-45)");
+
+            svg.append("g")
+                .call(d3.axisLeft(yScale))
+                .selectAll("text")
+                .attr("class", "axis-label");
+        }
+
+        function updateManualFiltering(category) {
+            const filteredData = data.filter(d => d.category === category);
+            const ratingFilter = d3.select("#rating-filter");
+            const ratingAmountFilter = d3.select("#rating-amount-filter");
+
+            const updateResults = () => {
+                const rating = +ratingFilter.node().value;
+                const ratingAmount = +ratingAmountFilter.node().value;
+
+                const results = filteredData.filter(d => {
+                    const restaurantRating = +d.rating;
+                    return (rating === 0 || Math.floor(restaurantRating) === rating) &&
+                           (isNaN(ratingAmount) || +d["review count"] >= ratingAmount);
+                });
+
+                const resultsDiv = d3.select("#filtered-results");
+                resultsDiv.selectAll("*").remove();
+
+                results.forEach(d => {
+                    resultsDiv.append("div")
+                        .attr("class", "restaurant-box")
+                        .html(`
+                            <h4>${d.name}</h4>
+                            <p>Rating: ${d.rating}</p>
+                            <p>Review Count: ${d["review count"]}</p>
+                            <p>Neighborhood: ${d.neighborhood}</p>
+                        `);
+                });
+            };
+
+            ratingFilter.on("change", updateResults);
+            ratingAmountFilter.on("input", updateResults);
+
+            updateResults();
+        }
+    </script>
+</body>
+</html>
