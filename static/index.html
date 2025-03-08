@@ -10,7 +10,6 @@
         .container {
             display: flex;
             flex-direction: column;
-            align-items: center;
             gap: 20px;
             padding: 20px;
             height: 100vh;
@@ -72,7 +71,7 @@
             padding: 20px;
         }
         .data-display-title {
-            font-size: 18px;
+            font-size: 22px;
             font-weight: bold;
             margin-bottom: 10px;
             color: black;
@@ -171,7 +170,7 @@
         </div>
         <div class="main-content">
             <div class="data-display">
-                <div class="data-display-title">Restaurants</div>
+                <div class="data-display-title">Restaurant List</div>
                 <div class="default-message">Choose a category for information!</div>
                 <div id="manual-filtering" class="filtering" style="display: none;">
                     <label for="rating-filter">Rating:</label>
@@ -370,8 +369,8 @@
 
                 const results = filteredData.filter(d => {
                     const restaurantRating = +d.rating;
-                    return (rating === 0 || Math.floor(restaurantRating) === rating) &&
-                           (isNaN(ratingAmount) || +d["review count"] >= ratingAmount);
+                    return (+d["review count"] >= ratingAmount) &&
+                        (Math.floor(restaurantRating) === rating || rating === 0)         
                 });
 
                 const resultsDiv = d3.select("#filtered-results");
