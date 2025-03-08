@@ -90,7 +90,7 @@
             margin-left: 300px;
         }
         .restaurant-list {
-            max-height: calc(100vh - 300px);
+            max-height: calc(100vh - 305px);
             overflow-y: auto;
             border-color: black;
             padding: 10px;
@@ -194,33 +194,37 @@
             </div>
         </div>
     </div>
-
     <div class="tooltip"></div>
 
     <script>
         let data;
         let currentCategory = null;
 
-        const categoryMapping = {
-            "coffee": "Coffee",
-            "donuts": "Donuts",
-            "pizza": "Pizza",
-            "indpak": "Indo-Pakistani",
-            "italian": "Italian",
-            "sandwiches": "Sandwiches",
-            "bakeries": "Bakeries",
-            "newamerican": "New American",
-            "cafes": "Cafes",
-            "chinese": "Chinese",
-            "sushi": "Sushi",
-            "thai": "Thai",
-            "mexican": "Mexican",
-            "ethnicmarkets": "Ethnic Markets",
-            "french": "French",
-            "restaurants": "Restaurants",
-            "vietnamese": "Vietnamese",
-            "japanese": "Japanese"
+        const labels = {
+            coffee: "Coffee",
+            donuts: "Donuts",
+            pizza: "Pizza",
+            indpak: "Indo-Pakistani",
+            italian: "Italian",
+            sandwiches: "Sandwiches",
+            bakeries: "Bakeries",
+            newamerican: "New American",
+            cafes: "Cafes",
+            chinese: "Chinese",
+            sushi: "Sushi",
+            thai: "Thai",
+            mexican: "Mexican",
+            ethnicmarkets: "Ethnic Markets",
+            french: "French",
+            restaurants: "Restaurants",
+            vietnamese: "Vietnamese",
+            japanese: "Japanese"
         };
+
+        const result = Object.keys(labels).map(key => ({
+            label: labels[key],
+            value: key
+        }));
 
         d3.csv("yelp_pittsburgh.csv").then(csvData => {
             data = csvData.filter(d => d.type === "food" && d.neighborhood);
@@ -229,16 +233,16 @@
 
         function makeCategories(data) {
             const categoryGrid = d3.select(".category-grid");
-            //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries
+
             categoryGrid.selectAll(".category-item")
-                .data(Object.entries(categoryMapping))
+                .data(result)
                 .enter()
                 .append("div")
                 .attr("class", "category-item")
-                .text(([key, value]) => value)
-                .on("click", function(event, [, value]) {
+                .text(d => d.label)
+                .on("click", function(event, d) {
                     d3.selectAll(".category-item").classed("selected", false);
-                    currentCategory = Object.keys(categoryMapping).find(key => categoryMapping[key] === value);
+                    currentCategory = d.value;
                     d3.select(this).classed("selected", true);
                     showOptions();
                 });
