@@ -18,14 +18,15 @@
         }
         .title {
             font-size: 28px;
+            margin-top: 10px;
             font-weight: bold;
             margin-bottom: 10px;
             color: black;
         }
         .subtitle {
-            font-size: 16px;
-            color: gray;
-            margin-bottom: 20px;
+            font-size: 18px;
+            color: black;
+            margin-bottom: 40px;
         }
         .categories {
             width: 100%;
@@ -35,7 +36,7 @@
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 10px;
-            color: black;
+            color: white;
         }
         .category-grid {
             display: grid;
@@ -44,17 +45,18 @@
         }
         .category-item {
             padding: 10px;
-            background: lightgrey;
-            border-radius: 5px;
+            background: lightcoral;
+            border-radius: 3px;
             cursor: pointer;
             text-align: center;
+            color: white;
         }
         .category-item.selected {
-            background: teal;
+            background: darkred;
             color: white;
         }
         .category-item:hover {
-            background: slategray;
+            background: darkred;
             color: white;
         }
         .main-content {
@@ -65,9 +67,9 @@
         }
         .data-display {
             width: 35%;
-            background: lightgray;
+            border-color: black;
+            border-style: double;
             padding: 20px;
-            border-radius: 10px;
         }
         .data-display-title {
             font-size: 18px;
@@ -78,26 +80,27 @@
         .default-message {
             font-size: 18px;
             color: black;
-            text-align: center;
-            margin-top: 50px;
+            margin-top: 85px;
+            margin-left: 100px;
         }
-        
+
+        .default-message-2 {
+            font-size: 18px;
+            color: black;
+            margin-top: 50px;
+            margin-left: 300px;
+        }
         .restaurant-list {
             max-height: calc(100vh - 300px);
             overflow-y: auto;
-            border: 1px solid lightgray;
-            border-radius: 5px;
+            border-color: black;
             padding: 10px;
         }
         .restaurant-box {
-            background: whitesmoke;
+            border-style: dashed;
+            border-color: black;
             padding: 10px;
-            border-radius: 5px;
             margin-bottom: 10px;
-            cursor: pointer;
-        }
-        .restaurant-box:hover {
-            background: silver;
         }
         .restaurant-box h4 {
             margin: 0;
@@ -107,13 +110,17 @@
         .restaurant-box p {
             margin: 5px 0;
             font-size: 14px;
-            color: gray;
+            color: black;
+        }
+        .restaurant-box a {
+            color: teal;
+            text-decoration: none;
         }
         .histogram-container {
             width: 65%;
-            background: lightgrey;
+            border-style: double;
+            border-color: black;
             padding: 20px;
-            border-radius: 10px;
         }
         .histogram-title {
             font-size: 22px;
@@ -132,11 +139,15 @@
         }
         .axis-label {
             font-size: 12px;
-            fill: gray;
+            margin-top: 20px;
+            fill: black;
         }
         .bar {
             stroke: black;
             stroke-width: 1px;
+        }
+        .bar:hover{
+            cursor: pointer;
         }
         .tooltip {
             position: absolute;
@@ -152,7 +163,7 @@
 <body>
     <div class="container">
         <div class="title">Category Cravings</div>
-        <div class="subtitle">Want to find food that fits with your tastes? Just click a category and choose from the options!</div>
+        <div class="subtitle">Know what type of food but not where to go? Want to find food that fits with your tastes? Just click a category and choose from the options!</div>
         <div class="categories">
             <div class="category-title">Food Categories:</div>
             <div class="category-grid">
@@ -166,21 +177,19 @@
                     <label for="rating-filter">Rating:</label>
                     <select id="rating-filter">
                         <option value="0">All</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
                         <option value="3">3</option>
                         <option value="4">4</option>
                         <option value="5">5</option>
                     </select>
                     <label for="rating-amount-filter">Review Count:</label>
-                    <input type="number" id="rating-amount-filter" min="0" placeholder="Min review count">
+                    <input type="number" id="rating-amount-filter" min="0" placeholder="Input Review Count">
                     <div class="restaurant-list" id="filtered-results"></div>
                 </div>
             </div>
             <div class="histogram-container">
-                <div class="histogram-title">Restaurant Ratings by Neighborhood</div>
-                <div class="histogram-subtitle">Click on a bar to find restaurants in the listing!</div>
-                <div class="default-message">Choose a category for information!</div>
+                <div class="histogram-title">Restaurant Ratings by Neighborhood (With Rating Count)</div>
+                <div class="histogram-subtitle">Click on a bar to find that restaurant in the listing</div>
+                <div class="default-message-2">Choose a category for information!</div>
                 <div id="histogram" class="histogram" style="display: none;"></div>
             </div>
         </div>
@@ -192,32 +201,53 @@
         let data;
         let currentCategory = null;
 
+        const categoryMapping = {
+            "coffee": "Coffee",
+            "donuts": "Donuts",
+            "pizza": "Pizza",
+            "indpak": "Indo-Pakistani",
+            "italian": "Italian",
+            "sandwiches": "Sandwiches",
+            "bakeries": "Bakeries",
+            "newamerican": "New American",
+            "cafes": "Cafes",
+            "chinese": "Chinese",
+            "sushi": "Sushi",
+            "thai": "Thai",
+            "mexican": "Mexican",
+            "ethnicmarkets": "Ethnic Markets",
+            "french": "French",
+            "restaurants": "Restaurants",
+            "vietnamese": "Vietnamese",
+            "japanese": "Japanese"
+        };
+
         d3.csv("yelp_pittsburgh.csv").then(csvData => {
             data = csvData.filter(d => d.type === "food" && d.neighborhood);
             makeCategories(data);
         });
 
         function makeCategories(data) {
-            const categories = [...new Set(data.map(d => d.category))];
             const categoryGrid = d3.select(".category-grid");
+            //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries
             categoryGrid.selectAll(".category-item")
-                .data(categories)
+                .data(Object.entries(categoryMapping))
                 .enter()
                 .append("div")
                 .attr("class", "category-item")
-                .text(d => d)
-                .on("click", function(event, d) {
-                    if (currentCategory) {
-                        d3.selectAll(".category-item").classed("selected", false);
-                    }
-                    currentCategory = d;
+                .text(([key, value]) => value)
+                .on("click", function(event, [, value]) {
+                    d3.selectAll(".category-item").classed("selected", false);
+                    currentCategory = Object.keys(categoryMapping).find(key => categoryMapping[key] === value);
                     d3.select(this).classed("selected", true);
                     showOptions();
                 });
         }
 
+
         function showOptions() {
             d3.selectAll(".default-message").style("display", "none");
+            d3.selectAll(".default-message-2").style("display", "none");
             d3.select("#histogram").style("display", "block");
             d3.select("#manual-filtering").style("display", "block");
             updateHistogram(currentCategory);
@@ -228,11 +258,10 @@
             const filteredData = data.filter(d => d.category === category && d.neighborhood);
             const histogram = d3.select("#histogram");
             histogram.selectAll("*").remove();
-
-            //https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect
-            const margin = { top: 20, right: 20, bottom: 60, left: 40 };
+            //https://www.w3schools.com/jsref/met_element_getboundingclientrect.asp
+            const margin = { top: 20, right: 30, bottom: 80, left: 50 };
             const width = histogram.node().getBoundingClientRect().width - margin.left - margin.right;
-            const height = histogram.node().getBoundingClientRect().height - margin.top - margin.bottom;
+            const height = 550 - margin.top - margin.bottom;
 
             const svg = histogram.append("svg")
                 .attr("width", width + margin.left + margin.right)
@@ -246,17 +275,52 @@
                 .range([0, width])
                 .padding(0.1);
 
-            const yScale = d3.scaleLinear()
-                .domain([0, d3.max(filteredData, d => +d["review count"])])
-                .range([height, 0]);
+                const neighborhoodSums = d3.rollup(
+                    filteredData,
+                    v => d3.sum(v, d => +d["review count"]),
+                    d => d["neighborhood"]
+                );
+
+                const maxSum = d3.max(Array.from(neighborhoodSums.values()));
+
+                const yScale = d3.scaleLinear()
+                    .domain([0, maxSum]).nice()
+                    .range([height, 0]);
+
 
             const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
-
             const tooltip = d3.select(".tooltip");
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(xScale))
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "6px")
+                .attr("dy", "8px")
+                .attr("transform", "rotate(-45)");
+
+            svg.append("g")
+                .call(d3.axisLeft(yScale));
+
+            svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", height + margin.bottom - 5)
+                .attr("text-anchor", "middle")
+                .attr("class", "axis-label")
+                .text("Neighborhood");
+
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -margin.left + 15)
+                .attr("x", -height / 2)
+                .attr("text-anchor", "middle")
+                .attr("class", "axis-label")
+                .text("Review Count");
 
             neighborhoods.forEach(neighborhood => {
                 const neighborhoodData = filteredData.filter(d => d.neighborhood === neighborhood);
-                let yOffset = 0;
+                let yExtra = 0;
 
                 neighborhoodData.forEach(restaurant => {
                     const reviewCount = +restaurant["review count"];
@@ -264,17 +328,17 @@
                     svg.append("rect")
                         .attr("class", "bar")
                         .attr("x", xScale(neighborhood))
-                        .attr("y", yScale(yOffset + reviewCount))
+                        .attr("y", yScale(yExtra + reviewCount))
                         .attr("width", xScale.bandwidth())
-                        .attr("height", yScale(0) - yScale(reviewCount))
+                        .attr("height", yScale(yExtra) - yScale(yExtra + reviewCount))
                         .attr("fill", colorScale(restaurant.name))
-                        .on("mouseover", function(event) {
+                        .on("mouseover", function (event) {
                             tooltip.style("opacity", 1)
                                 .html(`Restaurant: ${restaurant.name}<br>Rating: ${restaurant.rating}<br>Review Count: ${reviewCount}`)
                                 .style("left", `${event.pageX + 5}px`)
                                 .style("top", `${event.pageY - 20}px`);
                         })
-                        .on("mouseout", function() {
+                        .on("mouseout", function () {
                             tooltip.style("opacity", 0);
                         })
                         .on("click", function() {
@@ -287,31 +351,12 @@
                             //https://stackoverflow.com/questions/9707397/making-a-div-vertically-scrollable-using-css
                             if (restaurantBox) {
                                 restaurantBox.scrollIntoView({ behavior: "smooth", block: "center" });
-                                d3.select(restaurantBox).style("background", "silver");
-                                setTimeout(() => {
-                                    d3.select(restaurantBox).style("background", "lightgrey");
-                                }, 1000);
+                                d3.select(restaurantBox).style("background", "whitesmoke");
                             }
                         });
-
-                    yOffset += reviewCount;
+                    yExtra += reviewCount;
                 });
             });
-
-            svg.append("g")
-                .attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(xScale))
-                .selectAll("text")
-                .attr("class", "axis-label")
-                .style("text-anchor", "end")
-                .attr("dx", "6px")
-                .attr("dy", "8px")
-                .attr("transform", "rotate(-45)");
-
-            svg.append("g")
-                .call(d3.axisLeft(yScale))
-                .selectAll("text")
-                .attr("class", "axis-label");
         }
 
         function updateManualFiltering(category) {
@@ -340,6 +385,7 @@
                             <p>Rating: ${d.rating}</p>
                             <p>Review Count: ${d["review count"]}</p>
                             <p>Neighborhood: ${d.neighborhood}</p>
+                            <p><a href="${d.url}">Visit Website</a></p>
                         `);
                 });
             };
